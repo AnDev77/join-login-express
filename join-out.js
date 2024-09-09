@@ -1,6 +1,6 @@
 const express = require('express')
 const app = express()
-port = 8888
+port = 3001
 app.listen(port, ()=>{
     console.log(`join-out app is listening at ${port}`)
 })
@@ -12,21 +12,23 @@ let id = 1
 db.clear()
 app.post('/login', (req, res) => {
     const {userId, pwd} = req.body
-    let tempUser = undefined
-    for (let v of db.values()){
-        console.log(v.userId, v.pwd)
-        if (v.userId == userId && v.pwd == pwd){
-            tempUser = v
-            break
+    let tempUser = {}
+    tempUser = getUser(userId)
+
+    if (isExist(tempUser)){
+       if (tempUser.pwd !== pwd){
+            res.status(404).json({
+                message : '입력하신 비밀번호가 옳지 않습니다.'
+            })
+        } else{
+            res.status(201).json({
+                message : `${tempUser.userId} 님 환영합니다.`
+            })
         }
-    }
-    if (tempUser == undefined){
-        res.status(404).json({
-            message : '입력하신 id 또는 비밀번호가 옳지 않습니다.'
-        })
+        
     } else {
-        res.status(201).json({
-            message : `${tempUser.userId} 님 환영합니다.`
+        res.status(404).json({
+        message: "id를 조회할 수 없습니다."
         })
         //res.sendFile()
     }
@@ -88,9 +90,20 @@ app .route('/users/:id')
         }
     })
 
-/*
-app.get('/users/:id')
 
+function getUser(userId){
+    for (let v of db.values()){
+        if (v.userId == userId){
+            return v
+            }
+        }
+    return {}
+}
 
-app.delete('/users/:id')
-*/
+function isExist(user){
+    if (Object.keys(user).length === 0){
+        return false
+    } else{
+        return true
+    }
+}

@@ -1,27 +1,22 @@
 const express = require('express')
-const app = express()
-port = 3001
-app.listen(port, ()=>{
-    console.log(`join-out app is listening at ${port}`)
-})
-app.use(express.json())
+const router = express.Router()//user
+router.use(express.json())
+
 let db = new Map()
 
 //로그인
-let id = 1
-db.clear()
-app.post('/login', (req, res) => {
+router.post('/login', (req, res) => {
     const {userId, pwd} = req.body
     let tempUser = {}
     tempUser = getUser(userId)
 
     if (isExist(tempUser)){
        if (tempUser.pwd !== pwd){
-            res.status(404).json({
+            res.status(400).json({
                 message : '입력하신 비밀번호가 옳지 않습니다.'
             })
         } else{
-            res.status(201).json({
+            res.status(200).json({
                 message : `${tempUser.userId} 님 환영합니다.`
             })
         }
@@ -36,7 +31,7 @@ app.post('/login', (req, res) => {
 })
 
 // 회원가입
-app.post('/join', (req, res) => {
+router.post('/join', (req, res) => {
     const {userId, pwd, name} = req.body
 
     if (userId === undefined || pwd === undefined || name === undefined){
@@ -45,20 +40,19 @@ app.post('/join', (req, res) => {
         })
     } else {
         let tempUser = req.body
-        db.set(id++ , tempUser)
+        db.set(userId, tempUser)
         res.status(201).json({
-            message : `${db.get(id-1).userId} 님, 가입을 환영합니다!`
+            message : `${userId} 님, 가입을 환영합니다!`
         })
-        console.log(db)
     }
 
 })
-app .route('/users/:id')
-    .get((req, res) => { 
-        id = req.params.id
-        id = parseInt(id)
-        let tempUser = db.get(id)
-        if (tempUser != undefined){
+router 
+    .route('/users')
+    .get( (req, res) => {
+        let {userId} = req.body
+        let tempUser = db.get(userId)
+        if (tempUser){
         
             res.json({
                 userId : tempUser.userId,
@@ -71,11 +65,11 @@ app .route('/users/:id')
         }
     })
     .delete((req, res) => {
-        id = req.params.id
-        id = parseInt(id)
+        let {userId} = req.body
+        let tempUser = db.get(id)
         tempUser = db.get(id)
 
-        if ( tempUser != undefined){
+        if ( tempUser){
             let xId = tempUser.userId
             db.delete(id)
             res.json({
@@ -101,9 +95,11 @@ function getUser(userId){
 }
 
 function isExist(user){
-    if (Object.keys(user).length === 0){
-        return false
-    } else{
+    if (Object.keys(user).length){
         return true
+    } else{
+        return false
     }
 }
+
+module.exports = router // 모듈화

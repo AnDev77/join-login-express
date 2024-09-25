@@ -1,53 +1,61 @@
 const express = require('express')
 const router = express.Router()
+const {body, param, validationResult} = require('express-validator')
 const conn = require('../db')
 router.use(express.json())
 
+let validate = (req, res, next) => {
+    let result = validationResult(req)
+    if (result.isEmpty()){
+        return next()
+    }
+    return res.status(400).json(result.array())
+}
+
+
+
 router .route('/')
-    .get((req, res) => {
+    .get(body('userId').notEmpty().isInt().withMessage('숫자 입력'), validate,
+    (req, res, next) => {
         let {userId} = req.body
         let channels = []
+        
         const query = `SELECT * FROM channels where user_id = ?`
-        if(userId){
-            conn.query(query, userId, (err, rows) => {
-                if (rows.length)
-                    res.status(200).json(rows)
-                else
-                    res.status(404).json({
-                        message : "채널 정보를 찾을 수 없습니다."
-                    })
-                
-            
-            })
-        } else {
-          res.status(400).json({
-                message: "정보를 다시 입력해주세요"
-            })
-        }
+        conn.query(query, userId, (err, rows) => {
+            if (rows.length)
+                res.status(200).json(rows)
+            else
+                res.status(404).json(err)
+        })
 
     })
-    .post((req, res)=>{
-        
-        let {channelTitle, userId} = req.body
-        const query = `INSERT INTO channels (name, user_id) VALUES(? ,?)`
-        if (channelTitle == undefined || userId == undefined){
-            res.status(400).json({
-                message : "입력 정보를 다시 확인해주세요"
-            })
-        } else {
+    .post(
+        body('userId').notEmpty().isInt().withMessage('숫자를 입력해!'), 
+        body('channelTitle').notEmpty().isString().withMessage('문자를 입력해!'), validate,
+        (req, res, next) => {
+            
+            let {channelTitle, userId} = req.body
+            const query = `INSERT INTO channels (name, user_id) VALUES(?, ?)`
             conn.query(query, [channelTitle, userId], (err, rows)=>{
-                res.status(201).json({
-                    message : `${channelTitle} 님의 유튜버 생활을 응원합니다.`
+                if(err)
+                    return res.status(400).end();
+
+                res.status(201).json(rows)
+
                 })
-            })
-        }  
-    })
+        })                
 
 router.route('/:id')    
-   .get((req, res)=>{
+   .get(
+    param('id').notEmpty().withMessage('아이디 입력 요망'), validate
+   ,(req, res, next)=>{
+        
         
         const {id} = req.params
+        id = parseInt(id)
         const query = `SELECT FROM channels WHERE id = ?`
+        
+
         conn.query(query, email, (err, rows) =>{
             if (rows.length){
                 res.status(200).json(rows)
@@ -59,12 +67,40 @@ router.route('/:id')
         })
         
     })
-    .delete((req, res) => {
-        let {email} = req.body
+    
+    .delete( param('id').notEmpty().withMessage('id 필요'), validate, 
+     (req, res, next) => {
+        let {id} = req.params
+        id = parseInt(id)
+        
+        const delQuery= `DELETE FROM channels WHERE id = ?`
+        conn.query(delQuery, id, (err, rows)=>{
+            
+            if (err)
+                return res.status(400).end()
+            if (!rows.affectedRows)
+                return res.status(400).end()
+            
+            res.status(200).json(rows)
+        })    
         
     })
-    .put((req, res) => {
-        let {email} = req.body
+
+    .put(param('id').notEmpty().withMessage('채널 id 필요'), validate,
+    (req, res, next) => {
+
+        const {id} = req.params
+        const {name} = req.body
+
+        const query = `UPDATE channels SET name = ? WHERE id = ?`
+        conn.query(query, [name, id], (err, rows)=>{
+            if (err)
+                return res.status(400).json(err.array())
+            if (rows.affectedRows == 0)
+                return res.status(400).json({message : 'cannot found channel id'})
+            
+            res.status(200).json(rows).end()
+        })
         
     })
 
